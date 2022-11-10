@@ -6,6 +6,7 @@ use DateTime;
 use Exception;
 use App\Service\JWT;
 use App\Document\Customer;
+use App\Document\Transaction;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -264,11 +265,114 @@ class CustomerController extends AbstractController
     }
 
     ## customer transaction begin
-    // #[Route('/customer/account/withdraws', name: 'app_getCustomerWithdraws', methods:['GET'])]
-    // #[Route('/customer/account/withdraw', name: 'app_customerWithdraw', methods:['POST'])]
-    // #[Route('/customer/account/withdraw/{id}', name: 'app_getCustomerWithdraw', methods:['GET'])]
+    #[Route('/customer/account/withdraws', name: 'app_getCustomerWithdraws', methods:['POST'])]
+    public function getCustomerAllWithdraw(){
+        
+    }
+    #[Route('/customer/account/withdraw', name: 'app_customerWithdraw', methods:['POST'])]
+    public function setWithdram(){
+        
+    }
+    #[Route('/customer/account/withdraw/{id}', name: 'app_getCustomerWithdraw', methods:['POST'])]
+    public function getCustomerWithdraw(){
+        
+    }
 
-    // #[Route('/customer/account/deposites', name: 'app_getCustomerDeposites', methods:['GET'])]
-    // #[Route('/customer/account/deposite', name: 'app_customerDeposite', methods:['POST'])]
-    // #[Route('/customer/account/deposite/{id}', name: 'app_getCustomerDeposite', methods:['GET'])]
+    #[Route('/customer/account/deposites', name: 'app_getCustomerDeposites', methods:['POST'])]
+    public function getCustomerAllDeposite(){
+        
+    }
+
+    #[Route('/customer/account/deposite', name: 'app_customerDeposite', methods:['POST'])]
+    public function setDeposite(Request $request){
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ["token","amount","receiver_phone"];
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            foreach ($require_params as $value) {
+                if (!array_key_exists($value, $parameters)) {
+                    $errors[] = "$value must be set.";
+                    $message = "Required field missing";
+                } elseif (empty($parameters[$value])) {
+                    $errors[] = "$value must not be empty.";
+                    $message = "Empty field found.";
+                }
+            } 
+            
+            if(!$errors) {
+                try {
+                    $customer_collection = $this->documentManager->getRepository(Customer::class);
+                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+                    $sender = $customer_collection->findOneBy(["phone"=>$payload->customer_phone]);
+                    $receiver = $customer_collection->findOneBy(["phone" => $parameters["receiver_phone"]]);
+
+                    if(($sender && $receiver) && ($sender !== $receiver)){
+                        $transaction_collection = $this->documentManager->getRepository(Transaction::class);
+                        $transaction = new Transaction();
+                        if ($sender->getBalance() >= $parameters["amount"]) {
+                            $sender->setBalance(-$parameters["amount"]);
+                            $receiver->setBalance($parameters["amount"]);
+
+                            $transaction->setSender_phone($sender->getPhone());
+                            $transaction->setReceiver_phone($receiver->getPhone());
+                            $transaction->setTransaction_Type("deposite");
+                            $transaction->setTransaction_Amount($parameters["amount"]);
+                            $transaction->setTransaction_code();
+                            $transaction->setTransaction_date(new DateTime("now"));
+
+                            $this->documentManager->persist($sender);
+                            $this->documentManager->persist($transaction);
+                            $this->documentManager->persist($receiver);
+
+                            $this->documentManager->flush();
+
+                            $success = true;
+                            $message = "Deposite successfuly!";
+                        }else{
+                            $message = "Insuffisant balance!";
+                            $errors[] = "Your balance is low than the amount, please refill your account!";
+                        }
+                        
+                    }elseif($receiver == $sender){
+                        $message = "Receiver phone error.";
+                        $errors[] = "You can't deposite on your own account"; 
+                    }
+                    elseif(!$sender){
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted"; 
+                    }
+                    else{
+                        $message = "Receiver phone error";
+                        $errors[] = "Receiver should register first or you put a wrong number";
+                    }
+                    
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error.";
+                }
+            }
+
+        } else {
+            $errors[] = "Request body can't be empty";
+            $message = "Request body not found.";
+        }
+
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => [
+                "customer" => isset($sender) ? $sender->returnArray() : [],
+                "receiver" => isset($receiver) ? $receiver->returnArray() : [],
+                "transaction" => isset($transaction) ? $transaction->returnArray() : []
+            ]
+        ]);
+    }
+    #[Route('/customer/account/deposite/{id}', name: 'app_getCustomerDeposite', methods:['POST'])]
+    public function getCustomerDeposite(){
+
+    }
 }

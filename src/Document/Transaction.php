@@ -122,7 +122,7 @@ class Transaction{
      */ 
     public function setTransaction_code()
     {
-        $this->transaction_code = uniqid("mp_".date('dmY-his_'));
+        $this->transaction_code = uniqid("MP-".date('dmYHis'));
 
         return $this;
     }
