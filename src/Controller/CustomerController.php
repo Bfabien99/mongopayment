@@ -56,15 +56,15 @@ class CustomerController extends AbstractController
     }
 
     # Get a specific customer
-    #[Route('/customer/{id}', name: 'app_getCustomer', methods:['GET'])]
-    public function getCustomer(): JsonResponse
-    {
-        return $this->json([
-            'message' => 'get a specific customer',
-            'path' => 'src/Controller/CustomerController.php',
-            'link' => ""
-        ]);
-    }
+    // #[Route('/customer/{id}', name: 'app_getCustomer', methods:['GET'])]
+    // public function getCustomer(): JsonResponse
+    // {
+    //     return $this->json([
+    //         'message' => 'get a specific customer',
+    //         'path' => 'src/Controller/CustomerController.php',
+    //         'link' => ""
+    //     ]);
+    // }
 
     # Register a customer
     #[Route('/customer/register', name: 'app_registerCustomer', methods:['POST'])]
@@ -236,17 +236,17 @@ class CustomerController extends AbstractController
                         $message = "Access granted";
                     }else{
                         $message = "Invalid Token.";
-                        $errors[] = "This token is corrupted"; 
+                        $errors[] = "This token is corrupted."; 
                     }
                     
                 } catch (Exception $e) {
                     $errors[] = $e->getMessage();
-                    $message = "Token error.";
+                    $message = "Token error";
                 }
             }
         } else {
-            $errors[] = "Request body can't be empty";
-            $message = "Request body not found.";
+            $errors[] = "Request body can't be empty.";
+            $message = "Request body not found";
         }
 
         return $this->json([
@@ -256,4 +256,13 @@ class CustomerController extends AbstractController
             'results' => isset($customer) ? $customer->returnArray() : []
         ]);
     }
+
+    ## customer transaction begin
+    #[Route('/customer/account/withdraws', name: 'app_getCustomerWithdraws', methods:['GET'])]
+    #[Route('/customer/account/withdraw', name: 'app_customerWithdraw', methods:['POST'])]
+    #[Route('/customer/account/withdraw/{id}', name: 'app_getCustomerWithdraw', methods:['GET'])]
+
+    #[Route('/customer/account/deposites', name: 'app_getCustomerDeposites', methods:['GET'])]
+    #[Route('/customer/account/deposite', name: 'app_customerDeposite', methods:['POST'])]
+    #[Route('/customer/account/deposite/{id}', name: 'app_getCustomerDeposite', methods:['GET'])]
 }
