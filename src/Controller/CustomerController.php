@@ -88,7 +88,38 @@ class CustomerController extends AbstractController
                     $message = "Empty field found.";
                 }
             }
-        } else {
+
+            if(!$errors){
+                if(strlen($parameters['name']) < 2 || strlen($parameters['name']) > 30 || !ctype_alpha($parameters['name'])){
+                    $errors[] = "name must be between 2 and 30 charactères and contain only letters";
+                    $message = "Parameter error";
+                }
+
+                if(strlen($parameters['firstname']) < 5 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z ]+[a-zA-Z-_ ]+$/', $parameters['firstname'])){
+                    $errors[] = "firstname must be between 5 and 30 charactères and contain only letters";
+                    $message = "Parameter error";
+                }
+
+                if(strlen($parameters['email']) < 5 || strlen($parameters['email']) > 50){
+                    $errors[] = "email must be between 5 and 50 charactères";
+                    $message = "email error";
+                }elseif(!filter_var($parameters['email'], FILTER_VALIDATE_EMAIL)){
+                    $errors[] = "Invalid email";
+                    $message = "Parameter error";
+                }
+
+                if(!preg_match('/^[0-9]{10}+$/', $parameters['phone'])) {
+                    $errors[] = "Invalid phone. He must contain exactly 10 digits";
+                    $message = "Parameter error";
+                }
+
+                if(strlen($parameters['password']) < 8 || strlen($parameters['password']) > 30){
+                    $errors[] = "password must be between 8 and 30 charactères and contain only letters";
+                    $message = "Parameter error";
+                }
+            }
+        }
+        else {
             $errors[] = "Request body can't be empty";
             $message = "Request body not found.";
         }
