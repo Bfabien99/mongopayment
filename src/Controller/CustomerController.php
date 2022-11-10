@@ -195,8 +195,14 @@ class CustomerController extends AbstractController
             ];
 
             $token = $this->jwt->encode($payload, "SECRETE_KEY");
-            $message = "Login successfully";
-            $success = true;
+            if(!$token){
+                $errors[] = "Error while generating token.";
+                $message = "Token error.";
+            }else{
+                $message = "Login successfully";
+                $success = true;
+            }
+            
             }else{
                 $errors[] = "phone or password is not correct.";
                 $message = "Credentials error.";
@@ -207,7 +213,7 @@ class CustomerController extends AbstractController
             'success' => $success,
             'message' => $message,
             'errors' => $errors,
-            'token' => $token
+            'token' => isset($token) ? $token:""
         ]);
     }
 
@@ -253,16 +259,16 @@ class CustomerController extends AbstractController
             'success' => $success,
             'message' => $message,
             'errors' => $errors,
-            'results' => isset($customer) ? $customer->returnArray() : []
+            'results' => isset($customer) ? $customer : []
         ]);
     }
 
     ## customer transaction begin
-    #[Route('/customer/account/withdraws', name: 'app_getCustomerWithdraws', methods:['GET'])]
-    #[Route('/customer/account/withdraw', name: 'app_customerWithdraw', methods:['POST'])]
-    #[Route('/customer/account/withdraw/{id}', name: 'app_getCustomerWithdraw', methods:['GET'])]
+    // #[Route('/customer/account/withdraws', name: 'app_getCustomerWithdraws', methods:['GET'])]
+    // #[Route('/customer/account/withdraw', name: 'app_customerWithdraw', methods:['POST'])]
+    // #[Route('/customer/account/withdraw/{id}', name: 'app_getCustomerWithdraw', methods:['GET'])]
 
-    #[Route('/customer/account/deposites', name: 'app_getCustomerDeposites', methods:['GET'])]
-    #[Route('/customer/account/deposite', name: 'app_customerDeposite', methods:['POST'])]
-    #[Route('/customer/account/deposite/{id}', name: 'app_getCustomerDeposite', methods:['GET'])]
+    // #[Route('/customer/account/deposites', name: 'app_getCustomerDeposites', methods:['GET'])]
+    // #[Route('/customer/account/deposite', name: 'app_customerDeposite', methods:['POST'])]
+    // #[Route('/customer/account/deposite/{id}', name: 'app_getCustomerDeposite', methods:['GET'])]
 }
