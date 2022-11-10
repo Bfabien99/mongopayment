@@ -9,7 +9,7 @@ use Doctrine\ODM\MongoDB\Types\Type;
 class Customer
 {
     #[MongoDB\Id]
-    protected $id;
+    protected $_id;
 
     #[MongoDB\Field(type: Type::STRING)]
     protected $name;
@@ -34,7 +34,7 @@ class Customer
 
     public function getId(): mixed
     {
-        return $this->id;
+        return $this->_id;
     }
 
     public function getName(): ?string
