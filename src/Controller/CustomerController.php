@@ -35,7 +35,7 @@ class CustomerController extends AbstractController
     public function getAllCustomers(): JsonResponse
     {
         $collection = $this->documentManager->getDocumentCollection(Customer::class);
-
+        
         return $this->json([
             'message' => 'get all customers',
             'path' => 'src/Controller/CustomerController.php',
