@@ -126,4 +126,18 @@ class Customer
     public function onPrePersist(){
         $this->createdAt = new \DateTime();
     }
+
+    public function returnArray(){
+        $arrayCustomer = [
+            "id" => $this->getId(),
+            "name" => $this->getName(),
+            "firstname" => $this->getFirstname(),
+            "email" => $this->getEmail(),
+            "phone" => $this->getPhone(),
+            "account_balance" => $this->getBalance(),
+            "createdAt" => $this->getCreatedAt(),
+        ];
+
+        return $arrayCustomer;
+    }
 }
