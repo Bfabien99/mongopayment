@@ -28,7 +28,7 @@ class CustomerController extends AbstractController
     }
 
     ## Home page
-    #[Route('/', name: 'app_index', methods:['GET'])]
+    #[Route('/', name: 'app_index', methods: ['GET'])]
     public function index(): JsonResponse
     {
         return $this->json([
@@ -39,18 +39,18 @@ class CustomerController extends AbstractController
     }
 
     # See all customers
-    #[Route('/customers', name: 'app_getAllCustomers', methods:['GET'])]
+    #[Route('/customers', name: 'app_getAllCustomers', methods: ['GET'])]
     public function getAllCustomers(): JsonResponse
     {
         $collection = $this->documentManager->getRepository(Customer::class);
-        
+
         $customers = $collection->findAll();
         return $this->json([
             'message' => 'get all customers',
             'path' => 'src/Controller/CustomerController.php',
             'results' => $customers
-        ],Response::HTTP_OK, [],[
-            ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER=>function($object){
+        ], Response::HTTP_OK, [], [
+            ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER => function ($object) {
                 return $object->getId();
             }
         ]);
@@ -68,7 +68,7 @@ class CustomerController extends AbstractController
     // }
 
     # Register a customer
-    #[Route('/customer/register', name: 'app_registerCustomer', methods:['POST'])]
+    #[Route('/customer/register', name: 'app_registerCustomer', methods: ['POST'])]
     public function registerCustomer(Request $request): JsonResponse
     {
         $success = false;
@@ -90,37 +90,36 @@ class CustomerController extends AbstractController
                 }
             }
 
-            if(!$errors){
-                if(strlen($parameters['name']) < 2 || strlen($parameters['name']) > 30 || !ctype_alpha($parameters['name'])){
+            if (!$errors) {
+                if (strlen($parameters['name']) < 2 || strlen($parameters['name']) > 30 || !ctype_alpha($parameters['name'])) {
                     $errors[] = "name must be between 2 and 30 charactères and contain only letters";
                     $message = "Parameter error";
                 }
 
-                if(strlen($parameters['firstname']) < 5 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z ]+[a-zA-Z-_ ]+$/', $parameters['firstname'])){
+                if (strlen($parameters['firstname']) < 5 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z ]+[a-zA-Z-_ ]+$/', $parameters['firstname'])) {
                     $errors[] = "firstname must be between 5 and 30 charactères and contain only letters";
                     $message = "Parameter error";
                 }
 
-                if(strlen($parameters['email']) < 5 || strlen($parameters['email']) > 50){
+                if (strlen($parameters['email']) < 5 || strlen($parameters['email']) > 50) {
                     $errors[] = "email must be between 5 and 50 charactères";
                     $message = "email error";
-                }elseif(!filter_var($parameters['email'], FILTER_VALIDATE_EMAIL)){
+                } elseif (!filter_var($parameters['email'], FILTER_VALIDATE_EMAIL)) {
                     $errors[] = "Invalid email";
                     $message = "Parameter error";
                 }
 
-                if(!preg_match('/^[0-9]{10}+$/', $parameters['phone'])) {
+                if (!preg_match('/^[0-9]{10}+$/', $parameters['phone'])) {
                     $errors[] = "Invalid phone. He must contain exactly 10 digits";
                     $message = "Parameter error";
                 }
 
-                if(strlen($parameters['password']) < 8 || strlen($parameters['password']) > 30){
+                if (strlen($parameters['password']) < 8 || strlen($parameters['password']) > 30) {
                     $errors[] = "password must be between 8 and 30 charactères and contain only letters";
                     $message = "Parameter error";
                 }
             }
-        }
-        else {
+        } else {
             $errors[] = "Request body can't be empty";
             $message = "Request body not found.";
         }
@@ -141,11 +140,11 @@ class CustomerController extends AbstractController
                 $customer->setCreatedAt(new DateTime('now'));
 
                 $this->documentManager->persist($customer);
-                $this->documentManager->flush();                
+                $this->documentManager->flush();
 
                 $success = true;
                 $message = "Registered successfully";
-            }else{
+            } else {
                 $errors[] = "Phone already exist!";
                 $message = "Canceled registration";
             }
@@ -160,7 +159,7 @@ class CustomerController extends AbstractController
     }
 
     # login as customer
-    #[Route('/customer/login', name: 'app_loginCustomer', methods:['POST'])]
+    #[Route('/customer/login', name: 'app_loginCustomer', methods: ['POST'])]
     public function loginCustomer(Request $request): JsonResponse
     {
         $token = false;
@@ -187,40 +186,39 @@ class CustomerController extends AbstractController
 
         if (!$errors) {
             $collection = $this->documentManager->getDocumentCollection(Customer::class);
-            $customer = $collection->findOne(["phone" => $parameters["phone"],"password" => md5($parameters["password"])]);
-            if($customer){
+            $customer = $collection->findOne(["phone" => $parameters["phone"], "password" => md5($parameters["password"])]);
+            if ($customer) {
                 $payload = [
-                "customer_phone" => $customer["phone"],
-                'iat' => time(),
-                'exp' => time() + (30 * 60),
-            ];
+                    "customer_phone" => $customer["phone"],
+                    'iat' => time(),
+                    'exp' => time() + (30 * 60),
+                ];
 
-            $token = $this->jwt->encode($payload, "SECRETE_KEY");
-            if(!$token){
-                $errors[] = "Error while generating token.";
-                $message = "Token error.";
-            }else{
-                $message = "Login successfully";
-                $success = true;
-            }
-            
-            }else{
+                $token = $this->jwt->encode($payload, "SECRETE_KEY");
+                if (!$token) {
+                    $errors[] = "Error while generating token.";
+                    $message = "Token error.";
+                } else {
+                    $message = "Login successfully";
+                    $success = true;
+                }
+            } else {
                 $errors[] = "phone or password is not correct.";
                 $message = "Credentials error.";
             }
-            
         }
         return $this->json([
             'success' => $success,
             'message' => $message,
             'errors' => $errors,
-            'token' => isset($token) ? $token:""
+            'token' => isset($token) ? $token : ""
         ]);
     }
 
     # Customer Account
-    #[Route('/customer/account', name: 'app_customerAccount', methods:['POST'])]
-    public function customerAccount(Request $request){
+    #[Route('/customer/account', name: 'app_customerAccount', methods: ['POST'])]
+    public function customerAccount(Request $request)
+    {
         $success = false;
         $message = "";
         $errors = false;
@@ -237,15 +235,14 @@ class CustomerController extends AbstractController
                 try {
                     $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
                     $collection = $this->documentManager->getDocumentCollection(Customer::class);
-                    $customer = $collection->findOne(["phone"=>$payload->customer_phone]);
-                    if($customer){
+                    $customer = $collection->findOne(["phone" => $payload->customer_phone]);
+                    if ($customer) {
                         $success = true;
                         $message = "Access granted";
-                    }else{
+                    } else {
                         $message = "Invalid Token.";
-                        $errors[] = "This token is corrupted."; 
+                        $errors[] = "This token is corrupted.";
                     }
-                    
                 } catch (Exception $e) {
                     $errors[] = $e->getMessage();
                     $message = "Token error";
@@ -265,30 +262,21 @@ class CustomerController extends AbstractController
     }
 
     ## customer transaction begin
-    #[Route('/customer/account/withdraws', name: 'app_getCustomerWithdraws', methods:['POST'])]
-    public function getCustomerAllWithdraw(){
-        
+    #[Route('/customer/account/withdraws', name: 'app_getCustomerWithdraws', methods: ['POST'])]
+    public function getCustomerAllWithdraw(Request $request)
+    {
     }
-    #[Route('/customer/account/withdraw', name: 'app_customerWithdraw', methods:['POST'])]
-    public function setWithdram(){
-        
+    #[Route('/customer/account/withdraw', name: 'app_customerWithdraw', methods: ['POST'])]
+    public function setWithdram(Request $request)
+    {
     }
-    #[Route('/customer/account/withdraw/{id}', name: 'app_getCustomerWithdraw', methods:['POST'])]
-    public function getCustomerWithdraw(){
-        
-    }
-
-    #[Route('/customer/account/deposites', name: 'app_getCustomerDeposites', methods:['POST'])]
-    public function getCustomerAllDeposite(){
-        
-    }
-
-    #[Route('/customer/account/deposite', name: 'app_customerDeposite', methods:['POST'])]
-    public function setDeposite(Request $request){
+    #[Route('/customer/account/withdraw/{code}', name: 'app_getCustomerWithdraw', methods: ['POST'])]
+    public function getCustomerWithdraw(Request $request, $code)
+    {
         $success = false;
         $message = "";
         $errors = false;
-        $require_params = ["token","amount","receiver_phone"];
+        $require_params = ["token"];
         $parameters = json_decode($request->getContent(), true);
 
         if ($parameters) {
@@ -300,17 +288,88 @@ class CustomerController extends AbstractController
                     $errors[] = "$value must not be empty.";
                     $message = "Empty field found.";
                 }
-            } 
-            
-            if(!$errors) {
+            }
+        }
+    }
+
+    #[Route('/customer/account/deposites', name: 'app_getCustomerDeposites', methods: ['POST'])]
+    public function getCustomerAllDeposite(Request $request)
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            if (!array_key_exists("token", $parameters)) {
+                $errors[] = "token must be set.";
+                $message = "Required field missing";
+            } elseif (empty($parameters["token"])) {
+                $errors[] = "token must not be empty.";
+                $message = "Empty field found.";
+            } else {
+                try {
+                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+                    $collection = $this->documentManager->getRepository(Transaction::class);
+                    $customer = $collection->findBy(["sender_phone" => $payload->customer_phone]);
+                    if ($customer) {
+                        $success = true;
+                        $message = "Access granted";
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted.";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error";
+                }
+            }
+        } else {
+            $errors[] = "Request body can't be empty.";
+            $message = "Request body not found";
+        }
+
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => isset($customer) ? $customer : []
+        ], Response::HTTP_OK, [], [
+            ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER => function ($object) {
+                return $object->getId();
+            }
+        ]);
+    }
+
+
+    #[Route('/customer/account/deposite', name: 'app_customerDeposite', methods: ['POST'])]
+    public function setDeposite(Request $request)
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ["token", "amount", "receiver_phone"];
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            foreach ($require_params as $value) {
+                if (!array_key_exists($value, $parameters)) {
+                    $errors[] = "$value must be set.";
+                    $message = "Required field missing";
+                } elseif (empty($parameters[$value])) {
+                    $errors[] = "$value must not be empty.";
+                    $message = "Empty field found.";
+                }
+            }
+
+            if (!$errors) {
                 try {
                     $customer_collection = $this->documentManager->getRepository(Customer::class);
                     $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
-                    $sender = $customer_collection->findOneBy(["phone"=>$payload->customer_phone]);
+                    $sender = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
                     $receiver = $customer_collection->findOneBy(["phone" => $parameters["receiver_phone"]]);
 
-                    if(($sender && $receiver) && ($sender !== $receiver)){
-                        $transaction_collection = $this->documentManager->getRepository(Transaction::class);
+                    if (($sender && $receiver) && ($sender !== $receiver)) {
                         $transaction = new Transaction();
                         if ($sender->getBalance() >= $parameters["amount"]) {
                             $sender->setBalance(-$parameters["amount"]);
@@ -331,30 +390,25 @@ class CustomerController extends AbstractController
 
                             $success = true;
                             $message = "Deposite successfuly!";
-                        }else{
+                        } else {
                             $message = "Insuffisant balance!";
                             $errors[] = "Your balance is low than the amount, please refill your account!";
                         }
-                        
-                    }elseif($receiver == $sender){
+                    } elseif ($receiver == $sender) {
                         $message = "Receiver phone error.";
-                        $errors[] = "You can't deposite on your own account"; 
-                    }
-                    elseif(!$sender){
+                        $errors[] = "You can't deposite on your own account";
+                    } elseif (!$sender) {
                         $message = "Invalid Token.";
-                        $errors[] = "This token is corrupted"; 
-                    }
-                    else{
+                        $errors[] = "This token is corrupted";
+                    } else {
                         $message = "Receiver phone error";
                         $errors[] = "Receiver should register first or you put a wrong number";
                     }
-                    
                 } catch (Exception $e) {
                     $errors[] = $e->getMessage();
                     $message = "Token error.";
                 }
             }
-
         } else {
             $errors[] = "Request body can't be empty";
             $message = "Request body not found.";
@@ -371,8 +425,43 @@ class CustomerController extends AbstractController
             ]
         ]);
     }
-    #[Route('/customer/account/deposite/{id}', name: 'app_getCustomerDeposite', methods:['POST'])]
-    public function getCustomerDeposite(){
+    #[Route('/customer/account/deposite/{code}', name: 'app_getCustomerDeposite', methods: ['POST'])]
+    public function getCustomerDeposite(Request $request, $code)
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ["token"];
+        $parameters = json_decode($request->getContent(), true);
 
+        if ($parameters) {
+            if (!array_key_exists("token", $parameters)) {
+                $errors[] = "token must be set.";
+                $message = "Required field missing";
+            } elseif (empty($parameters["token"])) {
+                $errors[] = "token must not be empty.";
+                $message = "Empty field found.";
+            }
+
+            if (!$errors){
+                try {
+                    $customer_collection = $this->documentManager->getRepository(Customer::class);
+                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+                    $customer = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
+
+                    if($customer){
+                        $transaction_collection = $this->documentManager->getRepository(Transaction::class);
+                        $transaction = $transaction_collection->findBy(["sender_phone" => $customer->phone]);
+
+                    }else{
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error.";
+                }
+            }
+        }
     }
 }
