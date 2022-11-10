@@ -8,8 +8,10 @@ use App\Service\JWT;
 use App\Document\Customer;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 #[Route('/mongopayment/api', name: 'app_route')]
@@ -46,6 +48,10 @@ class CustomerController extends AbstractController
             'message' => 'get all customers',
             'path' => 'src/Controller/CustomerController.php',
             'results' => $customers
+        ],Response::HTTP_OK, [],[
+            ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER=>function($object){
+                return $object->getId();
+            }
         ]);
     }
 
@@ -100,6 +106,7 @@ class CustomerController extends AbstractController
                 $customer->setPhone($parameters['phone']);
                 $customer->setPassword($parameters['password']);
                 $customer->setBalance(0);
+                $customer->setCreatedAt(new DateTime('now'));
 
                 $this->documentManager->persist($customer);
                 $this->documentManager->flush();                

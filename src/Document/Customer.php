@@ -122,11 +122,6 @@ class Customer
         return $this;
     }
 
-    #[MongoDB\PrePersist]
-    public function onPrePersist(){
-        $this->createdAt = new \DateTime();
-    }
-
     public function returnArray(){
         $arrayCustomer = [
             "id" => $this->getId(),
