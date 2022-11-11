@@ -672,7 +672,8 @@ class CustomerController extends AbstractController
     }
 
     #[Route('/customer/account/transactions', name: 'app_getCustomerDeposite', methods: ['POST'])]
-    public function getCustomerTransaction(Request $request){
+    public function getCustomerTransaction(Request $request)
+    {
         $success = false;
         $message = "";
         $errors = false;
