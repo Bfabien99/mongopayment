@@ -26,10 +26,19 @@ class Agent{
     protected $password;
 
     #[MongoDB\Field(type: Type::INT)]
+    protected $deposite_balance;
+
+    #[MongoDB\Field(type: Type::INT)]
+    protected $withdraw_balance;
+
+    #[MongoDB\Field(type: Type::INT)]
     protected $balance;
 
     #[MongoDB\Field(type: Type::STRING)]
     protected $identifiant;
+
+    #[MongoDB\Field(type: Type::STRING)]
+    protected $localisation;
 
     #[MongoDB\Field(type: Type::DATE_IMMUTABLE)]
     protected $createdAt;
@@ -46,7 +55,7 @@ class Agent{
 
     public function setName(string $name): self
     {
-        $this->name = $name;
+        $this->name = ucwords($name);
 
         return $this;
     }
@@ -58,7 +67,7 @@ class Agent{
 
     public function setFirstname(string $firstname): self
     {
-        $this->firstname = $firstname;
+        $this->firstname = ucwords($firstname);
 
         return $this;
     }
@@ -99,14 +108,38 @@ class Agent{
         return $this;
     }
 
+    public function getDeposite_balance(): ?int
+    {
+        return $this->deposite_balance;
+    }
+
+    public function setDeposite_balance(int $deposite_balance=50000): self
+    {
+        $this->deposite_balance += $deposite_balance;
+
+        return $this;
+    }
+
+    public function getWithdraw_balance(): ?int
+    {
+        return $this->withdraw_balance;
+    }
+
+    public function setWithdraw_balance(int $withdraw_balance=50000): self
+    {
+        $this->withdraw_balance += $withdraw_balance;
+
+        return $this;
+    }
+
     public function getBalance(): ?int
     {
         return $this->balance;
     }
 
-    public function setBalance(int $balance): self
+    public function setBalance(): self
     {
-        $this->balance += $balance;
+        $this->balance = $this->withdraw_balance+$this->deposite_balance;
 
         return $this;
     }
@@ -137,9 +170,21 @@ class Agent{
      *
      * @return  self
      */ 
-    public function setIdentifiant($identifiant)
+    public function setIdentifiant()
     {
         $this->identifiant = uniqid("MPAG".date('dmY'));
+
+        return $this;
+    }
+
+    public function getLocalisation(): ?string
+    {
+        return $this->localisation;
+    }
+
+    public function setLocalisation(string $localisation): self
+    {
+        $this->localisation = ucwords($localisation);
 
         return $this;
     }
@@ -151,8 +196,11 @@ class Agent{
             "firstname" => $this->getFirstname(),
             "email" => $this->getEmail(),
             "phone" => $this->getPhone(),
-            "account_balance" => $this->getBalance(),
+            "withdraw_balance" => $this->getWithdraw_balance(),
+            "deposite_balance" => $this->getDeposite_balance(),
+            "total_balance" => $this->getBalance(),
             "identifiant" => $this->getIdentifiant(),
+            "localisation" => $this->getLocalisation(),
             "createdAt" => $this->getCreatedAt(),
         ];
 
