@@ -583,4 +583,68 @@ class AgentController extends AbstractController
             ]);
         }
     }
+
+    #[Route('/agent/account/transactions', name: 'app_getAgentDeposite', methods: ['POST'])]
+    public function getAgentTransaction(Request $request){
+        $success = false;
+        $message = "";
+        $errors = false;
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            if (!array_key_exists("token", $parameters)) {
+                $errors[] = "token must be set.";
+                $message = "Required field missing";
+            } elseif (empty($parameters["token"])) {
+                $errors[] = "token must not be empty.";
+                $message = "Empty field found.";
+            } else {
+                try {
+                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+                    $collection = $this->documentManager->getRepository(Agent::class);
+                    $agent = $collection->findBy(["phone" => $payload->agent_phone]);
+                    if ($agent) {
+                        $success = true;
+                        $message = "All transaction";
+                        $send_transaction = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone' => $payload->agent_phone]);
+                        $receive_transaction = $this->documentManager->getRepository(Transaction::class)->findBy(['receiver_phone' => $payload->agent_phone]);
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted.";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error";
+                }
+            }
+        } else {
+            $errors[] = "Request body can't be empty.";
+            $message = "Request body not found";
+        }
+
+        if (!$errors) {
+            $data = [];
+            if ($send_transaction) {
+                foreach ($send_transaction as $transaction) {
+                    $data["send"][] = $transaction->returnArray();
+                }
+            }
+            if ($receive_transaction) {
+                foreach ($receive_transaction as $transaction) {
+                    $data["receive"][] = $transaction->returnArray();
+                }
+            }
+        }
+
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => isset($data) ? $data : []
+        ], Response::HTTP_OK, [], [
+            ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER => function ($object) {
+                return $object;
+            },
+        ]);
+    }
 }
