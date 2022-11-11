@@ -363,7 +363,7 @@ class CustomerController extends AbstractController
                             $transaction->setReceiver_phone($receiver->getPhone());
                             $transaction->setTransaction_Type("withdraw");
                             $transaction->setTransaction_Amount($parameters["amount"]);
-                            $transaction->setTransaction_code();
+                            $transaction->setTransaction_code("MPC-W-");
                             $transaction->setTransaction_date(new DateTime("now"));
 
                             $this->documentManager->persist($sender);
@@ -562,7 +562,7 @@ class CustomerController extends AbstractController
                             $transaction->setReceiver_phone($receiver->getPhone());
                             $transaction->setTransaction_Type("deposite");
                             $transaction->setTransaction_Amount($parameters["amount"]);
-                            $transaction->setTransaction_code();
+                            $transaction->setTransaction_code("MPC-D-");
                             $transaction->setTransaction_date(new DateTime("now"));
 
                             $this->documentManager->persist($sender);

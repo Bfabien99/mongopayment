@@ -120,9 +120,9 @@ class Transaction{
      *
      * @return  self
      */ 
-    public function setTransaction_code()
+    public function setTransaction_code($prefixe)
     {
-        $this->transaction_code = uniqid("MP-".date('dmYHis'));
+        $this->transaction_code = uniqid($prefixe.date('dmYHis'));
 
         return $this;
     }

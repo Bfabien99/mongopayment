@@ -385,8 +385,8 @@ class AgentController extends AbstractController
         }
     }
 
-    #[Route('/customer/account/deposites', name: 'app_getCustomerDeposites', methods: ['POST'])]
-    public function getCustomerAllDeposite(Request $request)
+    #[Route('/agent/account/deposites', name: 'app_getAgentDeposites', methods: ['POST'])]
+    public function getAgentAllDeposite(Request $request)
     {
         $success = false;
         $message = "";
@@ -403,12 +403,12 @@ class AgentController extends AbstractController
             } else {
                 try {
                     $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
-                    $collection = $this->documentManager->getRepository(Customer::class);
-                    $customer = $collection->findBy(["phone" => $payload->customer_phone]);
-                    if ($customer) {
+                    $collection = $this->documentManager->getRepository(Agent::class);
+                    $agent = $collection->findBy(["phone" => $payload->agent_phone]);
+                    if ($agent) {
                         $success = true;
                         $message = "All deposite";
-                        $transactions = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone' => $payload->customer_phone, 'transaction_type' => 'deposite']);
+                        $transactions = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone' => $payload->agent_phone, 'transaction_type' => 'deposite']);
                     } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted.";
@@ -443,7 +443,7 @@ class AgentController extends AbstractController
         ]);
     }
 
-    #[Route('/customer/account/deposite', name: 'app_customerDeposite', methods: ['POST'])]
+    #[Route('/agent/account/deposite', name: 'app_agentDeposite', methods: ['POST'])]
     public function setDeposite(Request $request)
     {
         $success = false;
@@ -466,21 +466,24 @@ class AgentController extends AbstractController
             if (!$errors) {
                 try {
                     $customer_collection = $this->documentManager->getRepository(Customer::class);
+                    $agent_collection = $this->documentManager->getRepository(Agent::class);
                     $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
-                    $sender = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
+                    $sender = $agent_collection->findOneBy(["phone" => $payload->agent_phone]);
                     $receiver = $customer_collection->findOneBy(["phone" => $parameters["receiver_phone"]]);
 
                     if (($sender && $receiver) && ($sender !== $receiver)) {
                         $transaction = new Transaction();
-                        if ($sender->getBalance() >= $parameters["amount"]) {
-                            $sender->setBalance(-$parameters["amount"]);
+                        if ($sender->getDeposite_balance() >= $parameters["amount"]) {
+                            $sender->setDeposite_balance(-$parameters["amount"]);
+                            $sender->setWithdraw_balance($parameters["amount"]);
+                            $sender->setBalance();
                             $receiver->setBalance($parameters["amount"]);
 
                             $transaction->setSender_phone($sender->getPhone());
                             $transaction->setReceiver_phone($receiver->getPhone());
                             $transaction->setTransaction_Type("deposite");
                             $transaction->setTransaction_Amount($parameters["amount"]);
-                            $transaction->setTransaction_code();
+                            $transaction->setTransaction_code("MPAG-D-");
                             $transaction->setTransaction_date(new DateTime("now"));
 
                             $this->documentManager->persist($sender);
@@ -526,13 +529,12 @@ class AgentController extends AbstractController
         ]);
     }
 
-    #[Route('/customer/account/deposite/{code}', name: 'app_getCustomerDeposite', methods: ['POST'])]
-    public function getCustomerDeposite(Request $request, $code)
+    #[Route('/agent/account/deposite/{code}', name: 'app_getAgentDeposite', methods: ['POST'])]
+    public function getAgentDeposite(Request $request, $code)
     {
         $success = false;
         $message = "";
         $errors = false;
-        $require_params = ["token"];
         $parameters = json_decode($request->getContent(), true);
 
         if ($parameters) {
@@ -546,13 +548,13 @@ class AgentController extends AbstractController
 
             if (!$errors) {
                 try {
-                    $customer_collection = $this->documentManager->getRepository(Customer::class);
+                    $agent_collection = $this->documentManager->getRepository(Agent::class);
                     $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
-                    $customer = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
+                    $agent = $agent_collection->findOneBy(["phone" => $payload->agent_phone]);
 
-                    if ($customer) {
+                    if ($agent) {
                         $transaction_collection = $this->documentManager->getRepository(Transaction::class);
-                        $transactions = $transaction_collection->findBy(["sender_phone" => $payload->customer_phone, "transaction_code" => $code]);
+                        $transactions = $transaction_collection->findBy(["sender_phone" => $payload->agent_phone, "transaction_code" => $code]);
                     } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted";
