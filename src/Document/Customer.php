@@ -44,7 +44,7 @@ class Customer
 
     public function setName(string $name): self
     {
-        $this->name = $name;
+        $this->name = ucwords($name);
 
         return $this;
     }
@@ -56,7 +56,7 @@ class Customer
 
     public function setFirstname(string $firstname): self
     {
-        $this->firstname = $firstname;
+        $this->firstname = ucwords($firstname);
 
         return $this;
     }
