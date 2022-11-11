@@ -133,20 +133,28 @@ class CustomerController extends AbstractController
             ## On vérifie si le numéro existe déja dans la base de donnée
             $isCustomers = $collection->findOne(["phone" => $parameters["phone"]]);
             if (!$isCustomers) {
-                $customer = new Customer();
-                $customer->setName($parameters['name']);
-                $customer->setFirstname($parameters['firstname']);
-                $customer->setEmail($parameters['email']);
-                $customer->setPhone($parameters['phone']);
-                $customer->setPassword($parameters['password']);
-                $customer->setBalance(0);
-                $customer->setCreatedAt(new DateTime('now'));
+                $collection = $this->documentManager->getDocumentCollection(Agent::class);
+                ## On vérifie si le numéro existe déja dans la base de donnée
+                $isAgents = $collection->findOne(["phone" => $parameters["phone"]]);
+                if (!$isAgents) {
+                    $customer = new Customer();
+                    $customer->setName($parameters['name']);
+                    $customer->setFirstname($parameters['firstname']);
+                    $customer->setEmail($parameters['email']);
+                    $customer->setPhone($parameters['phone']);
+                    $customer->setPassword($parameters['password']);
+                    $customer->setBalance(0);
+                    $customer->setCreatedAt(new DateTime('now'));
 
-                $this->documentManager->persist($customer);
-                $this->documentManager->flush();
+                    $this->documentManager->persist($customer);
+                    $this->documentManager->flush();
 
-                $success = true;
-                $message = "Registered successfully";
+                    $success = true;
+                    $message = "Registered successfully";
+                } else {
+                    $errors[] = "Double identity, phone already exist";
+                    $message = "Canceled registration";
+                }
             } else {
                 $errors[] = "Phone already exist!";
                 $message = "Canceled registration";

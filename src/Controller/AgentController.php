@@ -140,7 +140,7 @@ class AgentController extends AbstractController
                     $success = true;
                     $message = "Registered successfully";
                 } else {
-                    $errors[] = "Phone already exist as Customer!";
+                    $errors[] = "Double identity, phone already exist";
                     $message = "Canceled registration";
                 }
             } else {
