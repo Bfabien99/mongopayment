@@ -99,8 +99,8 @@ class CustomerController extends AbstractController
                     $message = "Parameter error";
                 }
 
-                if (strlen($parameters['firstname']) < 5 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z ]+[a-zA-Z-_ ]+$/', $parameters['firstname'])) {
-                    $errors[] = "firstname must be between 5 and 30 charactères and contain only letters";
+                if (strlen($parameters['firstname']) < 2 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z ]+[a-zA-Z-_ ]+$/', $parameters['firstname'])) {
+                    $errors[] = "firstname must be between 2 and 30 charactères and contain only letters";
                     $message = "Parameter error";
                 }
 
@@ -194,7 +194,7 @@ class CustomerController extends AbstractController
                 $payload = [
                     "customer_phone" => $customer["phone"],
                     'iat' => time(),
-                    'exp' => time() + (24*60*60),
+                    'exp' => time() + (24 * 60 * 60),
                 ];
 
                 $token = $this->jwt->encode($payload, "SECRETE_KEY");
@@ -288,7 +288,7 @@ class CustomerController extends AbstractController
                     if ($customer) {
                         $success = true;
                         $message = "All withdraw";
-                        $transactions = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone'=>$payload->customer_phone,'transaction_type'=>'withdraw']);
+                        $transactions = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone' => $payload->customer_phone, 'transaction_type' => 'withdraw']);
                     } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted.";
@@ -303,12 +303,14 @@ class CustomerController extends AbstractController
             $message = "Request body not found";
         }
 
-        if($transactions){
-            foreach ($transactions as $transaction) {
-                $data[] = $transaction->returnArray();
+        if (!$errors) {
+            if ($transactions) {
+                foreach ($transactions as $transaction) {
+                    $data[] = $transaction->returnArray();
+                }
             }
         }
-        
+
         return $this->json([
             'success' => $success,
             'message' => $message,
@@ -359,7 +361,7 @@ class CustomerController extends AbstractController
 
                             $transaction->setSender_phone($sender->getPhone());
                             $transaction->setReceiver_phone($receiver->getPhone());
-                            $transaction->setTransaction_Type("deposite");
+                            $transaction->setTransaction_Type("withdraw");
                             $transaction->setTransaction_Amount($parameters["amount"]);
                             $transaction->setTransaction_code();
                             $transaction->setTransaction_date(new DateTime("now"));
@@ -425,17 +427,18 @@ class CustomerController extends AbstractController
                 $message = "Empty field found.";
             }
 
-            if (!$errors){
+            if (!$errors) {
                 try {
                     $customer_collection = $this->documentManager->getRepository(Customer::class);
                     $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
                     $customer = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
 
-                    if($customer){
+                    if ($customer) {
                         $transaction_collection = $this->documentManager->getRepository(Transaction::class);
-                        $transactions = $transaction_collection->findBy(["sender_phone" => $payload->customer_phone, "transaction_code"=>$code]);
-
-                    }else{
+                        $transactions = $transaction_collection->findBy(["sender_phone" => $payload->customer_phone, "transaction_code" => $code]);
+                        $success = true;
+                        $message = "withdraw";
+                    } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted";
                     }
@@ -445,11 +448,14 @@ class CustomerController extends AbstractController
                 }
             }
 
-            if($transactions){
-                foreach ($transactions as $transaction) {
-                    $data[] = $transaction->returnArray();
+            if (!$errors) {
+                if ($transactions) {
+                    foreach ($transactions as $transaction) {
+                        $data[] = $transaction->returnArray();
+                    }
                 }
             }
+
             return $this->json([
                 'success' => $success,
                 'message' => $message,
@@ -484,7 +490,7 @@ class CustomerController extends AbstractController
                     if ($customer) {
                         $success = true;
                         $message = "All deposite";
-                        $transactions = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone'=>$payload->customer_phone,'transaction_type'=>'deposite']);
+                        $transactions = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone' => $payload->customer_phone, 'transaction_type' => 'deposite']);
                     } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted.";
@@ -499,12 +505,14 @@ class CustomerController extends AbstractController
             $message = "Request body not found";
         }
 
-        if($transactions){
-            foreach ($transactions as $transaction) {
-                $data[] = $transaction->returnArray();
+        if (!$errors) {
+            if ($transactions) {
+                foreach ($transactions as $transaction) {
+                    $data[] = $transaction->returnArray();
+                }
             }
         }
-        
+
         return $this->json([
             'success' => $success,
             'message' => $message,
@@ -618,17 +626,16 @@ class CustomerController extends AbstractController
                 $message = "Empty field found.";
             }
 
-            if (!$errors){
+            if (!$errors) {
                 try {
                     $customer_collection = $this->documentManager->getRepository(Customer::class);
                     $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
                     $customer = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
 
-                    if($customer){
+                    if ($customer) {
                         $transaction_collection = $this->documentManager->getRepository(Transaction::class);
-                        $transactions = $transaction_collection->findBy(["sender_phone" => $payload->customer_phone, "transaction_code"=>$code]);
-
-                    }else{
+                        $transactions = $transaction_collection->findBy(["sender_phone" => $payload->customer_phone, "transaction_code" => $code]);
+                    } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted";
                     }
@@ -638,9 +645,11 @@ class CustomerController extends AbstractController
                 }
             }
 
-            if($transactions){
-                foreach ($transactions as $transaction) {
-                    $data[] = $transaction->returnArray();
+            if (!$errors) {
+                if ($transactions) {
+                    foreach ($transactions as $transaction) {
+                        $data[] = $transaction->returnArray();
+                    }
                 }
             }
             return $this->json([
