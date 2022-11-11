@@ -584,7 +584,7 @@ class AgentController extends AbstractController
         }
     }
 
-    #[Route('/agent/account/transactions', name: 'app_getAgentDeposite', methods: ['POST'])]
+    #[Route('/agent/account/transactions', name: 'app_getAgentTransaction', methods: ['POST'])]
     public function getAgentTransaction(Request $request){
         $success = false;
         $message = "";
