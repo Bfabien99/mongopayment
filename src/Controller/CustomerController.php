@@ -18,7 +18,7 @@ use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
-#[Route('/mongopayment/api', name: 'app_route')]
+#[Route('/mongopayment/api')]
 class CustomerController extends AbstractController
 {
 
@@ -77,7 +77,7 @@ class CustomerController extends AbstractController
         $success = false;
         $message = "";
         $errors = false;
-        $require_params = ['name', 'firstname', 'email', 'phone', 'password'];
+        $require_params = ['name', 'firstname', 'email', 'phone', 'password', 'code'];
         $parameters = json_decode($request->getContent(), true);
 
         ## On vérifie si les param(tres du request body existe)
@@ -99,7 +99,7 @@ class CustomerController extends AbstractController
                     $message = "Parameter error";
                 }
 
-                if (strlen($parameters['firstname']) < 2 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z ]+[a-zA-Z-_ ]+$/', $parameters['firstname'])) {
+                if (strlen($parameters['firstname']) < 2 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z\é\è\ê\ ]+[a-zA-Z\é\è\ê\-\_\ ]+$/', $parameters['firstname'])) {
                     $errors[] = "firstname must be between 2 and 30 charactères and contain only letters";
                     $message = "Parameter error";
                 }
@@ -117,8 +117,13 @@ class CustomerController extends AbstractController
                     $message = "Parameter error";
                 }
 
+                if (!preg_match('/^[0-9]{6}+$/', $parameters['code'])) {
+                    $errors[] = "Invalid code. He must contain exactly 6 digits";
+                    $message = "Parameter error";
+                }
+
                 if (strlen($parameters['password']) < 8 || strlen($parameters['password']) > 30) {
-                    $errors[] = "password must be between 8 and 30 charactères and contain only letters";
+                    $errors[] = "password must be between 8 and 30 charactères";
                     $message = "Parameter error";
                 }
             }
@@ -138,11 +143,12 @@ class CustomerController extends AbstractController
                 $isAgents = $collection->findOne(["phone" => $parameters["phone"]]);
                 if (!$isAgents) {
                     $customer = new Customer();
-                    $customer->setName($parameters['name']);
-                    $customer->setFirstname($parameters['firstname']);
-                    $customer->setEmail($parameters['email']);
-                    $customer->setPhone($parameters['phone']);
-                    $customer->setPassword($parameters['password']);
+                    $customer->setName(strip_tags(trim($parameters['name'])));
+                    $customer->setFirstname(strip_tags(trim($parameters['firstname'])));
+                    $customer->setEmail(strip_tags(trim($parameters['email'])));
+                    $customer->setPhone(strip_tags(trim($parameters['phone'])));
+                    $customer->setPassword(strip_tags(trim($parameters['password'])));
+                    $customer->setCode(strip_tags(trim($parameters['code'])));
                     $customer->setBalance(0);
                     $customer->setCreatedAt(new DateTime('now'));
 
@@ -165,7 +171,7 @@ class CustomerController extends AbstractController
             'success' => $success,
             'message' => $message,
             'errors' => $errors,
-            'results' => isset($customer) ? $customer->returnArray() : "[]"
+            'results' => isset($customer) ? $customer->returnArray() : []
         ]);
     }
 
@@ -246,7 +252,7 @@ class CustomerController extends AbstractController
                 try {
                     $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
                     $collection = $this->documentManager->getRepository(Customer::class);
-                    $customer = $collection->findBy(["phone" => $payload->customer_phone]);
+                    $customer = $collection->findOneBy(["phone" => $payload->customer_phone]);
                     if ($customer) {
                         $success = true;
                         $message = "Access granted";
@@ -337,7 +343,7 @@ class CustomerController extends AbstractController
         $success = false;
         $message = "";
         $errors = false;
-        $require_params = ["token", "amount", "receiver_phone"];
+        $require_params = ["token", "amount", "receiver_phone", "code"];
         $parameters = json_decode($request->getContent(), true);
 
         if ($parameters) {
@@ -360,31 +366,42 @@ class CustomerController extends AbstractController
                     $receiver = $agent_collection->findOneBy(["phone" => $parameters["receiver_phone"]]);
 
                     if (($sender && $receiver) && ($sender !== $receiver)) {
-                        $transaction = new Transaction();
-                        if ($sender->getBalance() >= $parameters["amount"]) {
-                            $sender->setBalance(-$parameters["amount"]);
-                            $receiver->setWithdraw_balance(-$parameters["amount"]);
-                            $receiver->setDeposite_balance($parameters["amount"]);
-                            $receiver->setBalance();
+                        if ($sender->getCode() == $parameters['code']) {
+                            $transaction = new Transaction();
+                            if ($sender->getBalance() >= $parameters["amount"]) {
+                                if ($receiver->getWithdraw_balance() >= $parameters["amount"]) {
+                                    $sender->setBalance(-$parameters["amount"]);
 
-                            $transaction->setSender_phone($sender->getPhone());
-                            $transaction->setReceiver_phone($receiver->getPhone());
-                            $transaction->setTransaction_Type("withdraw");
-                            $transaction->setTransaction_Amount($parameters["amount"]);
-                            $transaction->setTransaction_code("MPC-W-");
-                            $transaction->setTransaction_date(new DateTime("now"));
+                                    $receiver->setWithdraw_balance(-$parameters["amount"]);
+                                    $receiver->setDeposite_balance($parameters["amount"]);
+                                    $receiver->setBalance();
 
-                            $this->documentManager->persist($sender);
-                            $this->documentManager->persist($transaction);
-                            $this->documentManager->persist($receiver);
+                                    $transaction->setSender_phone($sender->getPhone());
+                                    $transaction->setReceiver_phone($receiver->getPhone());
+                                    $transaction->setTransaction_Type("withdraw");
+                                    $transaction->setTransaction_Amount($parameters["amount"]);
+                                    $transaction->setTransaction_code("MPC-W-");
+                                    $transaction->setTransaction_date(new DateTime("now"));
 
-                            $this->documentManager->flush();
+                                    $this->documentManager->persist($sender);
+                                    $this->documentManager->persist($transaction);
+                                    $this->documentManager->persist($receiver);
 
-                            $success = true;
-                            $message = "Withdraw successfuly!";
+                                    $this->documentManager->flush();
+
+                                    $success = true;
+                                    $message = "Withdraw successfuly!";
+                                }else{
+                                    $message = "Insuffisant Agent balance!";
+                                $errors[] = "Sorry, we have not suffisant money!";
+                                }
+                            } else {
+                                $message = "Insuffisant balance!";
+                                $errors[] = "Your balance is low than the amount, please refill your account!";
+                            }
                         } else {
-                            $message = "Insuffisant balance!";
-                            $errors[] = "Your balance is low than the amount, please refill your account!";
+                            $message = "code error";
+                            $errors[] = "You put a wrong code";
                         }
                     } elseif ($receiver == $sender) {
                         $message = "Receiver phone error.";
@@ -498,7 +515,8 @@ class CustomerController extends AbstractController
                     if ($customer) {
                         $success = true;
                         $message = "All deposite";
-                        $transactions = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone' => $payload->customer_phone, 'transaction_type' => 'deposite']);
+                        $send_deposite = $this->documentManager->getRepository(Transaction::class)->findBy(['sender_phone' => $payload->customer_phone, 'transaction_type' => 'deposite']);
+                        $receive_deposite = $this->documentManager->getRepository(Transaction::class)->findBy(['receiver_phone' => $payload->customer_phone, 'transaction_type' => 'deposite']);
                     } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted.";
@@ -514,9 +532,15 @@ class CustomerController extends AbstractController
         }
 
         if (!$errors) {
-            if ($transactions) {
-                foreach ($transactions as $transaction) {
-                    $data[] = $transaction->returnArray();
+            $data = [];
+            if ($send_deposite) {
+                foreach ($send_deposite as $transaction) {
+                    $data["send"][] = $transaction->returnArray();
+                }
+            }
+            if ($receive_deposite) {
+                foreach ($receive_deposite as $transaction) {
+                    $data["receive"][] = $transaction->returnArray();
                 }
             }
         }
@@ -539,7 +563,7 @@ class CustomerController extends AbstractController
         $success = false;
         $message = "";
         $errors = false;
-        $require_params = ["token", "amount", "receiver_phone"];
+        $require_params = ["token", "amount", "receiver_phone", "code"];
         $parameters = json_decode($request->getContent(), true);
 
         if ($parameters) {
@@ -561,29 +585,34 @@ class CustomerController extends AbstractController
                     $receiver = $customer_collection->findOneBy(["phone" => $parameters["receiver_phone"]]);
 
                     if (($sender && $receiver) && ($sender !== $receiver)) {
-                        $transaction = new Transaction();
-                        if ($sender->getBalance() >= $parameters["amount"]) {
-                            $sender->setBalance(-$parameters["amount"]);
-                            $receiver->setBalance($parameters["amount"]);
+                        if ($sender->getCode() == $parameters['code']) {
+                            $transaction = new Transaction();
+                            if ($sender->getBalance() >= $parameters["amount"]) {
+                                $sender->setBalance(-$parameters["amount"]);
+                                $receiver->setBalance($parameters["amount"]);
 
-                            $transaction->setSender_phone($sender->getPhone());
-                            $transaction->setReceiver_phone($receiver->getPhone());
-                            $transaction->setTransaction_Type("deposite");
-                            $transaction->setTransaction_Amount($parameters["amount"]);
-                            $transaction->setTransaction_code("MPC-D-");
-                            $transaction->setTransaction_date(new DateTime("now"));
+                                $transaction->setSender_phone($sender->getPhone());
+                                $transaction->setReceiver_phone($receiver->getPhone());
+                                $transaction->setTransaction_Type("deposite");
+                                $transaction->setTransaction_Amount($parameters["amount"]);
+                                $transaction->setTransaction_code("MPC-D-");
+                                $transaction->setTransaction_date(new DateTime("now"));
 
-                            $this->documentManager->persist($sender);
-                            $this->documentManager->persist($transaction);
-                            $this->documentManager->persist($receiver);
+                                $this->documentManager->persist($sender);
+                                $this->documentManager->persist($transaction);
+                                $this->documentManager->persist($receiver);
 
-                            $this->documentManager->flush();
+                                $this->documentManager->flush();
 
-                            $success = true;
-                            $message = "Deposite successfuly!";
+                                $success = true;
+                                $message = "Deposite successfuly!";
+                            } else {
+                                $message = "Insuffisant balance!";
+                                $errors[] = "Your balance is low than the amount, please refill your account!";
+                            }
                         } else {
-                            $message = "Insuffisant balance!";
-                            $errors[] = "Your balance is low than the amount, please refill your account!";
+                            $message = "code error";
+                            $errors[] = "You put a wrong code";
                         }
                     } elseif ($receiver == $sender) {
                         $message = "Receiver phone error.";
@@ -616,63 +645,63 @@ class CustomerController extends AbstractController
         ]);
     }
 
-    #[Route('/customer/account/deposite/{code}', name: 'app_getCustomerDeposite', methods: ['POST'])]
-    public function getCustomerDeposite(Request $request, $code)
-    {
-        $success = false;
-        $message = "";
-        $errors = false;
-        $require_params = ["token"];
-        $parameters = json_decode($request->getContent(), true);
+    // #[Route('/customer/account/deposite/{code}', name: 'app_getCustomerDeposite', methods: ['POST'])]
+    // public function getCustomerDeposite(Request $request, $code)
+    // {
+    //     $success = false;
+    //     $message = "";
+    //     $errors = false;
+    //     $require_params = ["token"];
+    //     $parameters = json_decode($request->getContent(), true);
 
-        if ($parameters) {
-            if (!array_key_exists("token", $parameters)) {
-                $errors[] = "token must be set.";
-                $message = "Required field missing";
-            } elseif (empty($parameters["token"])) {
-                $errors[] = "token must not be empty.";
-                $message = "Empty field found.";
-            }
+    //     if ($parameters) {
+    //         if (!array_key_exists("token", $parameters)) {
+    //             $errors[] = "token must be set.";
+    //             $message = "Required field missing";
+    //         } elseif (empty($parameters["token"])) {
+    //             $errors[] = "token must not be empty.";
+    //             $message = "Empty field found.";
+    //         }
 
-            if (!$errors) {
-                try {
-                    $customer_collection = $this->documentManager->getRepository(Customer::class);
-                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
-                    $customer = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
+    //         if (!$errors) {
+    //             try {
+    //                 $customer_collection = $this->documentManager->getRepository(Customer::class);
+    //                 $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+    //                 $customer = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
 
-                    if ($customer) {
-                        $transaction_collection = $this->documentManager->getRepository(Transaction::class);
-                        $transactions = $transaction_collection->findBy(["sender_phone" => $payload->customer_phone, "transaction_code" => $code]);
-                    } else {
-                        $message = "Invalid Token.";
-                        $errors[] = "This token is corrupted";
-                    }
-                } catch (Exception $e) {
-                    $errors[] = $e->getMessage();
-                    $message = "Token error.";
-                }
-            }
+    //                 if ($customer) {
+    //                     $transaction_collection = $this->documentManager->getRepository(Transaction::class);
+    //                     $transactions = $transaction_collection->findBy(["transaction_code" => $code]);
+    //                 } else {
+    //                     $message = "Invalid Token.";
+    //                     $errors[] = "This token is corrupted";
+    //                 }
+    //             } catch (Exception $e) {
+    //                 $errors[] = $e->getMessage();
+    //                 $message = "Token error.";
+    //             }
+    //         }
 
-            if (!$errors) {
-                if ($transactions) {
-                    foreach ($transactions as $transaction) {
-                        $data[] = $transaction->returnArray();
-                    }
-                }
-            }
-            return $this->json([
-                'success' => $success,
-                'message' => $message,
-                'errors' => $errors,
-                'results' => [
-                    "transaction" => isset($data) ? $data : []
-                ]
-            ]);
-        }
-    }
+    //         if (!$errors) {
+    //             if ($transactions) {
+    //                 foreach ($transactions as $transaction) {
+    //                     $data[] = $transaction->returnArray();
+    //                 }
+    //             }
+    //         }
+    //         return $this->json([
+    //             'success' => $success,
+    //             'message' => $message,
+    //             'errors' => $errors,
+    //             'results' => [
+    //                 "transaction" => isset($data) ? $data : []
+    //             ]
+    //         ]);
+    //     }
+    // }
 
-    #[Route('/customer/account/transactions', name: 'app_getCustomerDeposite', methods: ['POST'])]
-    public function getCustomerTransaction(Request $request)
+    #[Route('/customer/account/transactions', name: 'app_getCustomerTransactions', methods: ['POST'])]
+    public function getCustomerTransactions(Request $request)
     {
         $success = false;
         $message = "";
@@ -733,6 +762,183 @@ class CustomerController extends AbstractController
             ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER => function ($object) {
                 return $object;
             },
+        ]);
+    }
+
+    #[Route('/customer/account/transaction/{code}', name: 'app_getCustomerTransaction', methods: ['POST'])]
+    public function getCustomerTransaction(Request $request, $code)
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ["token"];
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            if (!array_key_exists("token", $parameters)) {
+                $errors[] = "token must be set.";
+                $message = "Required field missing";
+            } elseif (empty($parameters["token"])) {
+                $errors[] = "token must not be empty.";
+                $message = "Empty field found.";
+            }
+
+            if (!$errors) {
+                try {
+                    $customer_collection = $this->documentManager->getRepository(Customer::class);
+                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+                    $customer = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
+
+                    if ($customer) {
+                        $transaction_collection = $this->documentManager->getRepository(Transaction::class);
+                        $transactions = $transaction_collection->findBy(["transaction_code" => $code]);
+                        $message = "Transaction";
+                        $success = true;
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error.";
+                }
+            }
+
+            if (!$errors) {
+                if ($transactions) {
+                    foreach ($transactions as $transaction) {
+                        $data[] = $transaction->returnArray();
+                    }
+                }
+            }
+            return $this->json([
+                'success' => $success,
+                'message' => $message,
+                'errors' => $errors,
+                'results' => [
+                    "transaction" => isset($data) ? $data : []
+                ]
+            ]);
+        }
+    }
+
+    #[Route('/customer/account/updatepass', name: 'app_customerPassword', methods: ['POST'])]
+    public function updatePassword(Request $request)
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ["token", "password"];
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            foreach ($require_params as $value) {
+                if (!array_key_exists($value, $parameters)) {
+                    $errors[] = "$value must be set.";
+                    $message = "Required field missing";
+                } elseif (empty($parameters[$value])) {
+                    $errors[] = "$value must not be empty.";
+                    $message = "Empty field found.";
+                }
+            }
+
+            if (!$errors) {
+                try {
+                    $customer_collection = $this->documentManager->getRepository(Customer::class);
+                    $agent_collection = $this->documentManager->getRepository(Agent::class);
+                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+                    $sender = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
+
+                    if ($sender) {
+                        if (strlen($parameters['password']) < 8 || strlen($parameters['password']) > 30) {
+                            $errors[] = "password must be between 8 and 30 charactères";
+                            $message = "Parameter error";
+                        }else{
+                            $sender->setPassword($parameters["password"]);
+                        $this->documentManager->persist($sender);
+
+                        $this->documentManager->flush();
+                        }
+                        
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error.";
+                }
+            }
+        } else {
+            $errors[] = "Request body can't be empty";
+            $message = "Request body not found.";
+        }
+
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => []
+        ]);
+    }
+
+    #[Route('/customer/account/updatecode', name: 'app_customerCode', methods: ['POST'])]
+    public function updateCode(Request $request)
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ["token", "code"];
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            foreach ($require_params as $value) {
+                if (!array_key_exists($value, $parameters)) {
+                    $errors[] = "$value must be set.";
+                    $message = "Required field missing";
+                } elseif (empty($parameters[$value])) {
+                    $errors[] = "$value must not be empty.";
+                    $message = "Empty field found.";
+                }
+            }
+
+            if (!$errors) {
+                try {
+                    $customer_collection = $this->documentManager->getRepository(Customer::class);
+                    $agent_collection = $this->documentManager->getRepository(Agent::class);
+                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+                    $sender = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
+
+                    if ($sender) {
+                        if (!preg_match('/^[0-9]{6}+$/', $parameters['code'])) {
+                            $errors[] = "Invalid code. He must contain exactly 6 digits";
+                            $message = "Parameter error";
+                        }else{
+                            $sender->setCode($parameters["code"]);
+                        $this->documentManager->persist($sender);
+
+                        $this->documentManager->flush();
+                        }
+                        
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error.";
+                }
+            }
+        } else {
+            $errors[] = "Request body can't be empty";
+            $message = "Request body not found.";
+        }
+
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => []
         ]);
     }
 }
