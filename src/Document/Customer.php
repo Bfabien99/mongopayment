@@ -29,6 +29,9 @@ class Customer
     #[MongoDB\Field(type: Type::INT)]
     protected $balance;
 
+    #[MongoDB\Field(type: Type::STRING)]
+    protected $code;
+
     #[MongoDB\Field(type: Type::DATE_IMMUTABLE)]
     protected $createdAt;
 
@@ -105,6 +108,18 @@ class Customer
     public function setBalance(int $balance): self
     {
         $this->balance += $balance;
+
+        return $this;
+    }
+
+    public function getCode(): ?string
+    {
+        return $this->code;
+    }
+
+    public function setCode(string $code): self
+    {
+        $this->code = $code;
 
         return $this;
     }
