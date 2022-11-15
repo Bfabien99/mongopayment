@@ -119,7 +119,7 @@ class Customer
 
     public function setCode(string $code): self
     {
-        $this->code = $code;
+        $this->code = md5($code);
 
         return $this;
     }

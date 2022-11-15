@@ -42,22 +42,22 @@ class CustomerController extends AbstractController
     }
 
     # See all customers
-    #[Route('/customers', name: 'app_getAllCustomers', methods: ['GET'])]
-    public function getAllCustomers(): JsonResponse
-    {
-        $collection = $this->documentManager->getRepository(Customer::class);
+    // #[Route('/customers', name: 'app_getAllCustomers', methods: ['GET'])]
+    // public function getAllCustomers(): JsonResponse
+    // {
+    //     $collection = $this->documentManager->getRepository(Customer::class);
 
-        $customers = $collection->findAll();
-        return $this->json([
-            'message' => 'get all customers',
-            'path' => 'src/Controller/CustomerController.php',
-            'results' => $customers
-        ], Response::HTTP_OK, [], [
-            ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER => function ($object) {
-                return $object->getId();
-            }
-        ]);
-    }
+    //     $customers = $collection->findAll();
+    //     return $this->json([
+    //         'message' => 'get all customers',
+    //         'path' => 'src/Controller/CustomerController.php',
+    //         'results' => $customers
+    //     ], Response::HTTP_OK, [], [
+    //         ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER => function ($object) {
+    //             return $object->getId();
+    //         }
+    //     ]);
+    // }
 
     # Get a specific customer
     // #[Route('/customer/{id}', name: 'app_getCustomer', methods:['GET'])]
@@ -585,7 +585,7 @@ class CustomerController extends AbstractController
                     $receiver = $customer_collection->findOneBy(["phone" => $parameters["receiver_phone"]]);
 
                     if (($sender && $receiver) && ($sender !== $receiver)) {
-                        if ($sender->getCode() == $parameters['code']) {
+                        if ($sender->getCode() == md5($parameters['code'])) {
                             $transaction = new Transaction();
                             if ($sender->getBalance() >= $parameters["amount"]) {
                                 $sender->setBalance(-$parameters["amount"]);

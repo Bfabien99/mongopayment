@@ -40,6 +40,9 @@ class Agent{
     #[MongoDB\Field(type: Type::STRING)]
     protected $localisation;
 
+    #[MongoDB\Field(type: Type::STRING)]
+    protected $code;
+
     #[MongoDB\Field(type: Type::DATE_IMMUTABLE)]
     protected $createdAt;
 
@@ -144,6 +147,17 @@ class Agent{
         return $this;
     }
 
+    public function getCode(): ?string
+    {
+        return $this->code;
+    }
+
+    public function setCode(string $code): self
+    {
+        $this->code = md5($code);
+
+        return $this;
+    }
 
     public function getCreatedAt(): ?\DateTimeInterface
     {
