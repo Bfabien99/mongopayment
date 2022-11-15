@@ -56,7 +56,7 @@ class AgentController extends AbstractController
     //     $success = false;
     //     $message = "";
     //     $errors = false;
-    //     $require_params = ['name', 'firstname', 'email', 'phone', 'localisation', 'password'];
+    //     $require_params = ['name', 'firstname', 'email', 'phone', 'localisation', 'password', 'code'];
     //     $parameters = json_decode($request->getContent(), true);
 
     //     ## On vérifie si les param(tres du request body existe)
@@ -101,6 +101,11 @@ class AgentController extends AbstractController
     //                 $message = "Parameter error";
     //             }
 
+    //              if (!preg_match('/^[0-9]{6}+$/', $parameters['code'])) {
+    //                  $errors[] = "Invalid code. He must contain exactly 6 digits";
+    //                  $message = "Parameter error";
+    //              }
+
     //             if (strlen($parameters['password']) < 8 || strlen($parameters['password']) > 30) {
     //                 $errors[] = "password must be between 8 and 30 charactères and contain only letters";
     //                 $message = "Parameter error";
@@ -132,6 +137,7 @@ class AgentController extends AbstractController
     //                 $agent->setBalance();
     //                 $agent->setIdentifiant();
     //                 $agent->setLocalisation($parameters['localisation']);
+    //                 $agent->setCode($parameters['code']);
     //                 $agent->setCreatedAt(new DateTime('now'));
 
     //                 $this->documentManager->persist($agent);
