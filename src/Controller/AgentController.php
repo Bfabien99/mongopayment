@@ -478,7 +478,7 @@ class AgentController extends AbstractController
                     $receiver = $customer_collection->findOneBy(["phone" => $parameters["receiver_phone"]]);
 
                     if (($sender && $receiver) && ($sender !== $receiver)) {
-                        if ($sender->getCode() == $parameters['code']) {
+                        if ($sender->getCode() == md5($parameters['code'])) {
                             $transaction = new Transaction();
                             if ($sender->getDeposite_balance() >= $parameters["amount"]) {
                                 $sender->setDeposite_balance(-$parameters["amount"]);

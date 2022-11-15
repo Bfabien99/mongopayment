@@ -366,7 +366,7 @@ class CustomerController extends AbstractController
                     $receiver = $agent_collection->findOneBy(["phone" => $parameters["receiver_phone"]]);
 
                     if (($sender && $receiver) && ($sender !== $receiver)) {
-                        if ($sender->getCode() == $parameters['code']) {
+                        if ($sender->getCode() == md5($parameters['code'])) {
                             $transaction = new Transaction();
                             if ($sender->getBalance() >= $parameters["amount"]) {
                                 if ($receiver->getWithdraw_balance() >= $parameters["amount"]) {
