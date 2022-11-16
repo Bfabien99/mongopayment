@@ -8,6 +8,7 @@ use App\Service\JWT;
 use App\Document\Agent;
 use App\Document\Customer;
 use App\Document\Transaction;
+use App\Service\Sendmail;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,38 +42,9 @@ class CustomerController extends AbstractController
         ]);
     }
 
-    # See all customers
-    // #[Route('/customers', name: 'app_getAllCustomers', methods: ['GET'])]
-    // public function getAllCustomers(): JsonResponse
-    // {
-    //     $collection = $this->documentManager->getRepository(Customer::class);
-
-    //     $customers = $collection->findAll();
-    //     return $this->json([
-    //         'message' => 'get all customers',
-    //         'path' => 'src/Controller/CustomerController.php',
-    //         'results' => $customers
-    //     ], Response::HTTP_OK, [], [
-    //         ObjectNormalizer::CIRCULAR_REFERENCE_HANDLER => function ($object) {
-    //             return $object->getId();
-    //         }
-    //     ]);
-    // }
-
-    # Get a specific customer
-    // #[Route('/customer/{id}', name: 'app_getCustomer', methods:['GET'])]
-    // public function getCustomer(): JsonResponse
-    // {
-    //     return $this->json([
-    //         'message' => 'get a specific customer',
-    //         'path' => 'src/Controller/CustomerController.php',
-    //         'link' => ""
-    //     ]);
-    // }
-
     # Register a customer
     #[Route('/customer/register', name: 'app_registerCustomer', methods: ['POST'])]
-    public function registerCustomer(Request $request): JsonResponse
+    public function registerCustomer(Request $request, Sendmail $email): JsonResponse
     {
         $success = false;
         $message = "";
@@ -113,12 +85,12 @@ class CustomerController extends AbstractController
                 }
 
                 if (!preg_match('/^[0-9]{10}+$/', $parameters['phone'])) {
-                    $errors[] = "Invalid phone. He must contain exactly 10 digits";
+                    $errors[] = "Invalid phone. He must contain exactly 10 digits number";
                     $message = "Parameter error";
                 }
 
                 if (!preg_match('/^[0-9]{6}+$/', $parameters['code'])) {
-                    $errors[] = "Invalid code. He must contain exactly 6 digits";
+                    $errors[] = "Invalid code. He must contain exactly 6 digits number";
                     $message = "Parameter error";
                 }
 
@@ -142,7 +114,7 @@ class CustomerController extends AbstractController
                 ## On vérifie si le numéro existe déja dans la base de donnée
                 $isAgents = $collection->findOne(["phone" => $parameters["phone"]]);
                 if (!$isAgents) {
-                    $customer = new Customer();
+                    $customer = new Customer($email);
                     $customer->setName(strip_tags(trim($parameters['name'])));
                     $customer->setFirstname(strip_tags(trim($parameters['firstname'])));
                     $customer->setEmail(strip_tags(trim($parameters['email'])));
@@ -151,6 +123,7 @@ class CustomerController extends AbstractController
                     $customer->setCode(strip_tags(trim($parameters['code'])));
                     $customer->setBalance(0);
                     $customer->setCreatedAt(new DateTime('now'));
+                    $customer->sendRegisterMail($email);
 
                     $this->documentManager->persist($customer);
                     $this->documentManager->flush();
@@ -644,61 +617,6 @@ class CustomerController extends AbstractController
             ]
         ]);
     }
-
-    // #[Route('/customer/account/deposite/{code}', name: 'app_getCustomerDeposite', methods: ['POST'])]
-    // public function getCustomerDeposite(Request $request, $code)
-    // {
-    //     $success = false;
-    //     $message = "";
-    //     $errors = false;
-    //     $require_params = ["token"];
-    //     $parameters = json_decode($request->getContent(), true);
-
-    //     if ($parameters) {
-    //         if (!array_key_exists("token", $parameters)) {
-    //             $errors[] = "token must be set.";
-    //             $message = "Required field missing";
-    //         } elseif (empty($parameters["token"])) {
-    //             $errors[] = "token must not be empty.";
-    //             $message = "Empty field found.";
-    //         }
-
-    //         if (!$errors) {
-    //             try {
-    //                 $customer_collection = $this->documentManager->getRepository(Customer::class);
-    //                 $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
-    //                 $customer = $customer_collection->findOneBy(["phone" => $payload->customer_phone]);
-
-    //                 if ($customer) {
-    //                     $transaction_collection = $this->documentManager->getRepository(Transaction::class);
-    //                     $transactions = $transaction_collection->findBy(["transaction_code" => $code]);
-    //                 } else {
-    //                     $message = "Invalid Token.";
-    //                     $errors[] = "This token is corrupted";
-    //                 }
-    //             } catch (Exception $e) {
-    //                 $errors[] = $e->getMessage();
-    //                 $message = "Token error.";
-    //             }
-    //         }
-
-    //         if (!$errors) {
-    //             if ($transactions) {
-    //                 foreach ($transactions as $transaction) {
-    //                     $data[] = $transaction->returnArray();
-    //                 }
-    //             }
-    //         }
-    //         return $this->json([
-    //             'success' => $success,
-    //             'message' => $message,
-    //             'errors' => $errors,
-    //             'results' => [
-    //                 "transaction" => isset($data) ? $data : []
-    //             ]
-    //         ]);
-    //     }
-    // }
 
     #[Route('/customer/account/transactions', name: 'app_getCustomerTransactions', methods: ['POST'])]
     public function getCustomerTransactions(Request $request)
