@@ -85,7 +85,7 @@ class AdminController extends AbstractController
                 } else {
                     $message = "Login successfully";
                     $success = true;
-                    $email->send($admin["email"],'mongopay notif','<h4>You just login!</h4>');
+                    $email->send($admin["email"], 'mongopay notif', '<h4>You just login!</h4>');
                 }
             } else {
                 $errors[] = "phone or password is not correct.";
@@ -97,6 +97,60 @@ class AdminController extends AbstractController
             'message' => $message,
             'errors' => $errors,
             'token' => isset($token) ? $token : ""
+        ]);
+    }
+
+    #[Route('/admin/account', name: 'app_accountAdmin', methods: ['POST'])]
+    public function agentAccount(Request $request)
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            if (!array_key_exists("token", $parameters)) {
+                $errors[] = "token must be set.";
+                $message = "Required field missing";
+            } elseif (empty($parameters["token"])) {
+                $errors[] = "token must not be empty.";
+                $message = "Empty field found.";
+            } else {
+                try {
+                    $payload = $this->jwt->decode($parameters["token"], "SECRETE_KEY", ['HS256']);
+                    $collection = $this->documentManager->getRepository(Admin::class);
+                    $admin = $collection->findBy(["phone" => $payload->admin_pseudo]);
+                    if ($admin) {
+                        $success = true;
+                        $message = "Access granted";
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted.";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error";
+                }
+            }
+        } else {
+            $errors[] = "Request body can't be empty.";
+            $message = "Request body not found";
+        }
+
+        if (!$errors) {
+            if ($admin) {
+                foreach ($admin as $find) {
+                    $data[] = $find->returnArray();
+                }
+            }
+        }
+
+
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => isset($data) ? $data : []
         ]);
     }
 
@@ -169,44 +223,46 @@ class AdminController extends AbstractController
                 }
             }
 
-            try {
-                if ($this->verifyToken($parameters["token"])) {
-                    if (!$errors) {
-                        if (strlen($parameters['name']) < 2 || strlen($parameters['name']) > 30 || !ctype_alpha($parameters['name'])) {
-                            $errors[] = "name must be between 2 and 30 charactères and contain only letters";
-                            $message = "Parameter error";
-                        }
+            if (!$errors) {
+                try {
+                    if ($this->verifyToken($parameters["token"])) {
+                        if (!$errors) {
+                            if (strlen($parameters['name']) < 2 || strlen($parameters['name']) > 30 || !ctype_alpha($parameters['name'])) {
+                                $errors[] = "name must be between 2 and 30 charactères and contain only letters";
+                                $message = "Parameter error";
+                            }
 
-                        if (strlen($parameters['localisation']) < 2 || strlen($parameters['localisation']) > 30 || !ctype_alpha($parameters['localisation'])) {
-                            $errors[] = "localisation must be between 2 and 30 charactères and contain only letters";
-                            $message = "Parameter error";
-                        }
+                            if (strlen($parameters['localisation']) < 2 || strlen($parameters['localisation']) > 30 || !ctype_alpha($parameters['localisation'])) {
+                                $errors[] = "localisation must be between 2 and 30 charactères and contain only letters";
+                                $message = "Parameter error";
+                            }
 
-                        if (strlen($parameters['firstname']) < 2 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z ]+[a-zA-Z-_ ]+$/', $parameters['firstname'])) {
-                            $errors[] = "firstname must be between 2 and 30 charactères and contain only letters";
-                            $message = "Parameter error";
-                        }
+                            if (strlen($parameters['firstname']) < 2 || strlen($parameters['firstname']) > 30 || !preg_match('/^[a-zA-Z ]+[a-zA-Z-_ ]+$/', $parameters['firstname'])) {
+                                $errors[] = "firstname must be between 2 and 30 charactères and contain only letters";
+                                $message = "Parameter error";
+                            }
 
-                        if (strlen($parameters['email']) < 5 || strlen($parameters['email']) > 50) {
-                            $errors[] = "email must be between 5 and 50 charactères";
-                            $message = "email error";
-                        } elseif (!filter_var($parameters['email'], FILTER_VALIDATE_EMAIL)) {
-                            $errors[] = "Invalid email";
-                            $message = "Parameter error";
-                        }
+                            if (strlen($parameters['email']) < 5 || strlen($parameters['email']) > 50) {
+                                $errors[] = "email must be between 5 and 50 charactères";
+                                $message = "email error";
+                            } elseif (!filter_var($parameters['email'], FILTER_VALIDATE_EMAIL)) {
+                                $errors[] = "Invalid email";
+                                $message = "Parameter error";
+                            }
 
-                        if (!preg_match('/^[0-9]{10}+$/', $parameters['phone'])) {
-                            $errors[] = "Invalid phone. He must contain exactly 10 digits";
-                            $message = "Parameter error";
+                            if (!preg_match('/^[0-9]{10}+$/', $parameters['phone'])) {
+                                $errors[] = "Invalid phone. He must contain exactly 10 digits";
+                                $message = "Parameter error";
+                            }
                         }
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted.";
                     }
-                } else {
-                    $message = "Invalid Token.";
-                    $errors[] = "This token is corrupted.";
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error";
                 }
-            } catch (Exception $e) {
-                $errors[] = $e->getMessage();
-                $message = "Token error";
             }
         } else {
             $errors[] = "Request body can't be empty";
@@ -261,10 +317,113 @@ class AdminController extends AbstractController
         ]);
     }
 
-    // #[Route('/agent/{id}', name: 'app_getAgent', methods: ['POST'])]
-    // public function getAgent(Request $request): JsonResponse
-    // {
-    // }
+    #[Route('/admin/agent/refill/{id}', name: 'app_refillAgent', methods: ['POST'])]
+    public function refillAgent(Request $request, $id)
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ['deposite_balance', 'withdraw_balance', 'token'];
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            ## On vérifie si les paramètres requis y sont présents
+            foreach ($require_params as $value) {
+                if (!array_key_exists($value, $parameters)) {
+                    $errors[] = "$value must be set.";
+                    $message = "Required field missing";
+                } elseif (empty($parameters[$value])) {
+                    $errors[] = "$value must not be empty.";
+                    $message = "Empty field found.";
+                }
+            }
+
+            if (!$errors) {
+                try {
+                    if ($this->verifyToken($parameters["token"])) {
+                        if ($parameters['deposite_balance'] < 10000) {
+                            $errors[] = "Deposite must be at least 10000";
+                            $message = "Parameter error";
+                        }
+                        if ($parameters['withdraw_balance'] < 30000) {
+                            $errors[] = "Withdraw must be at least 10000";
+                            $message = "Parameter error";
+                        }
+
+                        if (!$errors) {
+                            $collection = $this->documentManager->getRepository(Agent::class);
+
+                            $agent = $collection->findOneBy(['_id' => $id]);
+                            if ($agent) {
+                                $agent->setDeposite_balance($parameters['deposite_balance']);
+                                $agent->setWithdraw_balance($parameters['withdraw_balance']);
+                                $agent->setBalance();
+
+                                $this->documentManager->persist($agent);
+                                $this->documentManager->flush();
+                            }
+                        }
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted.";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error";
+                }
+            }
+        }
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => isset($data) ? $data : []
+        ]);
+    }
+
+    #[Route('/agent/{id}', name: 'app_getAgent', methods: ['POST'])]
+    public function getAgent(Request $request, $id): JsonResponse
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            if (!array_key_exists("token", $parameters)) {
+                $errors[] = "token must be set.";
+                $message = "Required field missing";
+            } elseif (empty($parameters["token"])) {
+                $errors[] = "token must not be empty.";
+                $message = "Empty field found.";
+            } else {
+                try {
+                    if ($this->verifyToken($parameters["token"])) {
+                        $collection = $this->documentManager->getRepository(Agent::class);
+
+                        $agent = $collection->findOneBy(['_id' => $id]);
+                        if ($agent) {
+                            $data[] = $agent->returnArray();
+                            $message = "Agent";
+                            $success = true;
+                        }
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted.";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error";
+                }
+            }
+        }
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => isset($data) ? $data : []
+        ]);
+    }
 
     #[Route('/admin/customers', name: 'app_getAllCustomers', methods: ['POST'])]
     public function getAllCustomers(Request $request): JsonResponse
@@ -305,7 +464,7 @@ class AdminController extends AbstractController
         return $this->json([
             'success' => $success,
             'message' => $message,
-            'errors'=>$errors,
+            'errors' => $errors,
             'path' => 'src/Controller/CustomerController.php',
             'results' => isset($data) ? $data : []
         ]);
@@ -331,7 +490,7 @@ class AdminController extends AbstractController
                     if ($this->verifyToken($parameters["token"])) {
                         $collection = $this->documentManager->getRepository(Customer::class);
 
-                        $customer = $collection->findOneBy(['_id'=>$id]);
+                        $customer = $collection->findOneBy(['_id' => $id]);
                         if ($customer) {
                             $data[] = $customer->returnArray();
                             $message = "Customer";
@@ -350,7 +509,95 @@ class AdminController extends AbstractController
         return $this->json([
             'success' => $success,
             'message' => $message,
-            'errors'=>$errors,
+            'errors' => $errors,
+            'results' => isset($data) ? $data : []
+        ]);
+    }
+
+    #[Route('/admin/transactions', name: 'app_getAllTransactions', methods: ['POST'])]
+    public function getAllTransactions(Request $request): JsonResponse
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            if (!array_key_exists("token", $parameters)) {
+                $errors[] = "token must be set.";
+                $message = "Required field missing";
+            } elseif (empty($parameters["token"])) {
+                $errors[] = "token must not be empty.";
+                $message = "Empty field found.";
+            } else {
+                try {
+                    if ($this->verifyToken($parameters["token"])) {
+                        $collection = $this->documentManager->getRepository(Transaction::class);
+
+                        $transactions = $collection->findAll();
+                        if ($transactions) {
+                            foreach ($transactions as $transaction) {
+                                $data[] = $transaction->returnArray();
+                            }
+                        }
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted.";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error";
+                }
+            }
+        }
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'results' => isset($data) ? $data : []
+        ]);
+    }
+
+    #[Route('/admin/transaction/{code}', name: 'app_getTransaction', methods: ['POST'])]
+    public function getTransaction(Request $request, $code): JsonResponse
+    {
+        $success = false;
+        $message = "";
+        $errors = false;
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            if (!array_key_exists("token", $parameters)) {
+                $errors[] = "token must be set.";
+                $message = "Required field missing";
+            } elseif (empty($parameters["token"])) {
+                $errors[] = "token must not be empty.";
+                $message = "Empty field found.";
+            } else {
+                try {
+                    if ($this->verifyToken($parameters["token"])) {
+                        $collection = $this->documentManager->getRepository(Transaction::class);
+
+                        $transaction = $collection->findOneBy(['transaction_code' => $code]);
+                        if ($transaction) {
+                            $data[] = $transaction->returnArray();
+                            $message = "transaction";
+                            $success = true;
+                        }
+                    } else {
+                        $message = "Invalid Token.";
+                        $errors[] = "This token is corrupted.";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                    $message = "Token error";
+                }
+            }
+        }
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
             'results' => isset($data) ? $data : []
         ]);
     }

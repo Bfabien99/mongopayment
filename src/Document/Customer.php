@@ -171,4 +171,11 @@ class Customer
         <p>Validation code:</p><strong>".$this->unc_code."</strong>";
         $this->semail->send($this->getEmail(),"Mangopay account opening",$html);
     }
+
+    public function sendResetMail(){
+        $html = "<h1>Reset mongopay account's password</h1>
+        <p>Here are your new password</p>
+        <p>password :</p><strong>".$this->unc_pass."</strong>";
+        $this->semail->send($this->getEmail(),"Mangopay account opening",$html);
+    }
 }

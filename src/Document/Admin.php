@@ -128,7 +128,7 @@ class Admin
             "name" => $this->getName(),
             "firstname" => $this->getFirstname(),
             "email" => $this->getEmail(),
-            "Pseudo" => $this->getPseudo(),
+            "pseudo" => $this->getPseudo(),
             "phone" => $this->getPhone(),
             "createdAt" => $this->getCreatedAt(),
         ];

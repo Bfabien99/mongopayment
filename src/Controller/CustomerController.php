@@ -364,9 +364,9 @@ class CustomerController extends AbstractController
 
                                     $success = true;
                                     $message = "Withdraw successfuly!";
-                                }else{
+                                } else {
                                     $message = "Insuffisant Agent balance!";
-                                $errors[] = "Sorry, we have not suffisant money!";
+                                    $errors[] = "Sorry, we have not suffisant money!";
                                 }
                             } else {
                                 $message = "Insuffisant balance!";
@@ -771,13 +771,12 @@ class CustomerController extends AbstractController
                         if (strlen($parameters['password']) < 8 || strlen($parameters['password']) > 30) {
                             $errors[] = "password must be between 8 and 30 charactères";
                             $message = "Parameter error";
-                        }else{
+                        } else {
                             $sender->setPassword($parameters["password"]);
-                        $this->documentManager->persist($sender);
+                            $this->documentManager->persist($sender);
 
-                        $this->documentManager->flush();
+                            $this->documentManager->flush();
                         }
-                        
                     } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted";
@@ -831,13 +830,12 @@ class CustomerController extends AbstractController
                         if (!preg_match('/^[0-9]{6}+$/', $parameters['code'])) {
                             $errors[] = "Invalid code. He must contain exactly 6 digits";
                             $message = "Parameter error";
-                        }else{
+                        } else {
                             $sender->setCode($parameters["code"]);
-                        $this->documentManager->persist($sender);
+                            $this->documentManager->persist($sender);
 
-                        $this->documentManager->flush();
+                            $this->documentManager->flush();
                         }
-                        
                     } else {
                         $message = "Invalid Token.";
                         $errors[] = "This token is corrupted";
@@ -857,6 +855,56 @@ class CustomerController extends AbstractController
             'message' => $message,
             'errors' => $errors,
             'results' => []
+        ]);
+    }
+
+    # login as customer
+    #[Route('/customer/resetpass', name: 'app_loginCustomer', methods: ['POST'])]
+    public function resetCustomerPass(Request $request): JsonResponse
+    {
+        $token = false;
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ["phone", "email"];
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            foreach ($require_params as $value) {
+                if (!array_key_exists($value, $parameters)) {
+                    $errors[] = "$value must be set.";
+                    $message = "Required field missing";
+                } elseif (empty($parameters[$value])) {
+                    $errors[] = "$value must not be empty.";
+                    $message = "Empty field found.";
+                }
+            }
+        } else {
+            $errors[] = "Request body can't be empty";
+            $message = "Request body not found.";
+        }
+
+        if (!$errors) {
+            $collection = $this->documentManager->getRepository(Customer::class);
+            $customer = $collection->findOneBy(["email" => $parameters["email"], "phone" => $parameters["phone"]]);
+            if ($customer) {
+                $success = true;
+                $message = "We sent you an email with your new password";
+                $customer->setPassword();
+                $customer->sendMailerReset();
+                $this->documentManager->persist($customer);
+
+                $this->documentManager->flush();
+            } else {
+                $errors[] = "phone or password is not correct.";
+                $message = "Credentials error.";
+            }
+        }
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'token' => isset($token) ? $token : ""
         ]);
     }
 }
