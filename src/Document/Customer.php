@@ -1,8 +1,9 @@
 <?php
 namespace App\Document;
 
-use Doctrine\ODM\MongoDB\Mapping\Annotations as MongoDB;
+use App\Service\Sendmail;
 use Doctrine\ODM\MongoDB\Types\Type;
+use Doctrine\ODM\MongoDB\Mapping\Annotations as MongoDB;
 
 
 #[MongoDB\Document(db:"mongopayment",collection:"customer")]
@@ -35,6 +36,15 @@ class Customer
     #[MongoDB\Field(type: Type::DATE_IMMUTABLE)]
     protected $createdAt;
 
+    protected $unc_code;
+
+    protected $unc_pass;
+
+    private $semail;
+    public function __construct(Sendmail $semail = null){
+        $this->semail = $semail;
+    }
+    
     public function getId(): mixed
     {
         return $this->_id;
@@ -95,6 +105,7 @@ class Customer
 
     public function setPassword(string $password): self
     {
+        $this->unc_pass = $password;
         $this->password = md5($password);
 
         return $this;
@@ -119,6 +130,7 @@ class Customer
 
     public function setCode(string $code): self
     {
+        $this->unc_code = $code;
         $this->code = md5($code);
 
         return $this;
@@ -149,5 +161,14 @@ class Customer
         ];
 
         return $arrayCustomer;
+    }
+
+    public function sendRegisterMail(){
+        $html = "<h1>Your mongopay account has just been opened</h1>
+        <p>Here are your connection settings</p>
+        <p>phone number:</p><strong>".$this->getPhone()."</strong>
+        <p>password :</p><strong>".$this->unc_pass."</strong>
+        <p>Validation code:</p><strong>".$this->unc_code."</strong>";
+        $this->semail->send($this->getEmail(),"Mangopay account opening",$html);
     }
 }

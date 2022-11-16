@@ -1,8 +1,9 @@
 <?php
 namespace App\Document;
 
-use Doctrine\ODM\MongoDB\Mapping\Annotations as MongoDB;
+use App\Service\Sendmail;
 use Doctrine\ODM\MongoDB\Types\Type;
+use Doctrine\ODM\MongoDB\Mapping\Annotations as MongoDB;
 
 
 #[MongoDB\Document(db:"mongopayment",collection:"agent")]
@@ -46,6 +47,14 @@ class Agent{
     #[MongoDB\Field(type: Type::DATE_IMMUTABLE)]
     protected $createdAt;
 
+    protected $unc_code;
+
+    protected $unc_pass;
+
+    private $semail;
+    public function __construct(Sendmail $semail = null){
+        $this->semail = $semail;
+    }
     public function getId(): mixed
     {
         return $this->_id;
@@ -104,8 +113,21 @@ class Agent{
         return $this->password;
     }
 
-    public function setPassword(string $password): self
+    public function setPassword(string $password = null): self
     {
+        if ($password == null) {
+            $letters = array_merge(range('A', 'Z'), range('a', 'z'), range(0, 9), ['-', '_', '#']);
+            $pass = "";
+            $i = 0;
+            while ($i < 9) {
+                $pass .= $letters[rand(0, (count($letters) - 1))];
+                $i++;
+            }
+
+            $password = $pass;
+        }
+
+        $this->unc_pass = $password;
         $this->password = md5($password);
 
         return $this;
@@ -152,8 +174,20 @@ class Agent{
         return $this->code;
     }
 
-    public function setCode(string $code): self
+    public function setCode(string $code=null): self
     {
+        if ($code == null) {
+            $numbers = range(0, 9);
+            $pass = "";
+            $i = 0;
+            while ($i < 6) {
+                $pass .= $numbers[rand(0, (count($numbers) - 1))];
+                $i++;
+            }
+
+            $code = $pass;
+        }
+        $this->unc_code = $code;
         $this->code = md5($code);
 
         return $this;
@@ -219,5 +253,15 @@ class Agent{
         ];
 
         return $arrayCustomer;
+    }
+
+    public function sendRegisterMail(){
+        $html = "<h1>Your mongopay agent account has just been opened</h1>
+        <p>Here are your connection settings</p>
+        <p>phone number:</p><strong>".$this->getPhone()."</strong>
+        <p>password :</p><strong>".$this->unc_pass."</strong>
+        <p>Validation code:</p><strong>".$this->unc_code."</strong>";
+        $html .= "<h5><i>For more security, please change the password and the validation code after your login</i></h5>";
+        $this->semail->send($this->getEmail(),"Mangopay account opening",$html);
     }
 }
