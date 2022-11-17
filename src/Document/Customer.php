@@ -103,8 +103,19 @@ class Customer
         return $this->password;
     }
 
-    public function setPassword(string $password): self
+    public function setPassword(string $password=null): self
     {
+        if ($password == null) {
+            $letters = array_merge(range('A', 'Z'), range('a', 'z'), range(0, 9), ['-', '_', '#']);
+            $pass = "";
+            $i = 0;
+            while ($i < 9) {
+                $pass .= $letters[rand(0, (count($letters) - 1))];
+                $i++;
+            }
+
+            $password = $pass;
+        }
         $this->unc_pass = $password;
         $this->password = md5($password);
 
@@ -168,14 +179,14 @@ class Customer
         <p>Here are your connection settings</p>
         <p>phone number:</p><strong>".$this->getPhone()."</strong>
         <p>password :</p><strong>".$this->unc_pass."</strong>
-        <p>Validation code:</p><strong>".$this->unc_code."</strong>";
+        <p>Transaction code:</p><strong>".$this->unc_code."</strong>";
         $this->semail->send($this->getEmail(),"Mangopay account opening",$html);
     }
 
-    public function sendResetMail(){
+    public function sendMailerReset(Sendmail $semail){
         $html = "<h1>Reset mongopay account's password</h1>
         <p>Here are your new password</p>
         <p>password :</p><strong>".$this->unc_pass."</strong>";
-        $this->semail->send($this->getEmail(),"Mangopay account opening",$html);
+        $semail->send($this->getEmail(),"Mangopay account opening",$html);
     }
 }

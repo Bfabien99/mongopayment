@@ -858,9 +858,9 @@ class CustomerController extends AbstractController
         ]);
     }
 
-    # login as customer
-    #[Route('/customer/resetpass', name: 'app_loginCustomer', methods: ['POST'])]
-    public function resetCustomerPass(Request $request): JsonResponse
+    # reset customer password
+    #[Route('/customer/resetpass', name: 'app_resetCustomer', methods: ['POST'])]
+    public function resetCustomerPass(Request $request, Sendmail $semail): JsonResponse
     {
         $token = false;
         $success = false;
@@ -887,11 +887,12 @@ class CustomerController extends AbstractController
         if (!$errors) {
             $collection = $this->documentManager->getRepository(Customer::class);
             $customer = $collection->findOneBy(["email" => $parameters["email"], "phone" => $parameters["phone"]]);
+
             if ($customer) {
                 $success = true;
                 $message = "We sent you an email with your new password";
                 $customer->setPassword();
-                $customer->sendMailerReset();
+                $customer->sendMailerReset($semail);
                 $this->documentManager->persist($customer);
 
                 $this->documentManager->flush();

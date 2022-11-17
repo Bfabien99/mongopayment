@@ -260,7 +260,7 @@ class Agent{
         <p>Here are your connection settings</p>
         <p>phone number:</p><strong>".$this->getPhone()."</strong>
         <p>password :</p><strong>".$this->unc_pass."</strong>
-        <p>Validation code:</p><strong>".$this->unc_code."</strong>";
+        <p>Transaction code:</p><strong>".$this->unc_code."</strong>";
         $html .= "<h5><i>For more security, please change the password and the validation code after your login</i></h5>";
         $this->semail->send($this->getEmail(),"Mangopay account opening",$html);
     }
