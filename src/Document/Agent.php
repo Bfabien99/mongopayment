@@ -264,4 +264,11 @@ class Agent{
         $html .= "<h5><i>For more security, please change the password and the validation code after your login</i></h5>";
         $this->semail->send($this->getEmail(),"Mangopay account opening",$html);
     }
+
+    public function sendMailerReset(Sendmail $semail){
+        $html = "<h1>Reset mongopay account's password</h1>
+        <p>Here are your new password</p>
+        <p>password :</p><strong>".$this->unc_pass."</strong>";
+        $semail->send($this->getEmail(),"Mangopay account opening",$html);
+    }
 }

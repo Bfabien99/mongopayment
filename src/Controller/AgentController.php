@@ -530,6 +530,57 @@ class AgentController extends AbstractController
         ]);
     }
 
+    # reset customer password
+    #[Route('/agent/account/resetpass', name: 'app_resetCustomer', methods: ['POST'])]
+    public function resetCustomerPass(Request $request, Sendmail $semail): JsonResponse
+    {
+        $token = false;
+        $success = false;
+        $message = "";
+        $errors = false;
+        $require_params = ["phone", "email"];
+        $parameters = json_decode($request->getContent(), true);
+
+        if ($parameters) {
+            foreach ($require_params as $value) {
+                if (!array_key_exists($value, $parameters)) {
+                    $errors[] = "$value must be set.";
+                    $message = "Required field missing";
+                } elseif (empty($parameters[$value])) {
+                    $errors[] = "$value must not be empty.";
+                    $message = "Empty field found.";
+                }
+            }
+        } else {
+            $errors[] = "Request body can't be empty";
+            $message = "Request body not found.";
+        }
+
+        if (!$errors) {
+            $collection = $this->documentManager->getRepository(Agent::class);
+            $agent = $collection->findOneBy(["email" => $parameters["email"], "phone" => $parameters["phone"]]);
+
+            if ($agent) {
+                $success = true;
+                $message = "We sent you an email with your new password";
+                $agent->setPassword();
+                $agent->sendMailerReset($semail);
+                $this->documentManager->persist($agent);
+
+                $this->documentManager->flush();
+            } else {
+                $errors[] = "phone or password is not correct.";
+                $message = "Credentials error.";
+            }
+        }
+        return $this->json([
+            'success' => $success,
+            'message' => $message,
+            'errors' => $errors,
+            'token' => isset($token) ? $token : ""
+        ]);
+    }
+
     #[Route('/agent/account/updatecode', name: 'app_agentCode', methods: ['POST'])]
     public function updateCode(Request $request)
     {
